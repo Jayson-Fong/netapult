@@ -39,8 +39,6 @@ class BasicChannel(netapult.channel.Channel):
 
 
 def test_basic_read_write():
-    with netapult.client.Client(
-            channel=BasicChannel()
-    ) as client:
+    with netapult.client.Client(channel=BasicChannel(protocol_name="basic")) as client:
         prompt_found, prompt = client.find_prompt(read_timeout=10)
         assert b"localhost>" in prompt

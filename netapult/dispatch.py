@@ -45,7 +45,9 @@ def dispatch(
     )
 
     if client_class is None:
-        raise netapult.exceptions.DispatchException(f"Unknown device type: {device_type}")
+        raise netapult.exceptions.DispatchException(
+            f"Unknown device type: {device_type}"
+        )
 
     protocol_class: type[netapult.channel.Channel] | None = _extract_requested_class(
         protocol, PROTOCOLS, protocol_overrides

@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 from contextlib import contextmanager
@@ -6,6 +7,9 @@ from typing import Literal, overload, Self, Iterable, Any
 
 import netapult.channel
 import netapult.exceptions
+
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class Client:
@@ -17,10 +21,20 @@ class Client:
         encoding: str = "utf-8",
         errors: str = "backslashreplace",
         return_sequence: str | bytes = b"\n",
+        prompt: str | bytes | None = None,
         prompt_pattern: str | bytes = rb"(?:\$|#|%|>) ",
         response_return_sequence: str | bytes = b"\n",
         prompt_re_flags: int | re.RegexFlag = 0,
+        **kwargs,
     ):
+        # kwargs is accepted here to generically accept certain keyword
+        # arguments such as privilege passwords, which may not be
+        # available universally, but our user may want to assume it is.
+        for kwarg_key in kwargs:
+            logger.warning(
+                "Received unexpected keyword initialization argument: %s", kwarg_key
+            )
+
         self.channel: netapult.channel.Channel = channel
         self.delay_factor: float = delay_factor
         self.encoding: str = encoding
@@ -29,6 +43,7 @@ class Client:
         self.return_sequence: bytes = self._encode(return_sequence)
         self.response_return_sequence: bytes = self._encode(response_return_sequence)
 
+        self.prompt: bytes | None = self._encode(prompt) if prompt else None
         self.prompt_pattern: bytes | None = (
             self._encode(prompt_pattern) if prompt_pattern else None
         )
@@ -218,6 +233,19 @@ class Client:
             end_index = newline_index
 
         return None
+
+    def run_command(
+            self, command: str | bytes, prompt: str | bytes | None = None, find_prompt_kwargs: dict[str, Any] | None = None, encoding: str | None = None,
+            errors: str | None = None, write_kwargs: dict[str, Any] | None = None, **kwargs
+    ) -> tuple[bool, str | bytes]:
+        prompt: bytes | None = self._normalize(prompt, self.prompt, encoding=encoding, errors=errors)
+        if not prompt:
+            prompt_found, prompt = self.find_prompt(**(find_prompt_kwargs or {}))
+            if not prompt_found:
+                raise netapult.exceptions.PromptNotFoundException("Failed to find prompt")
+
+        self.write(command, **(write_kwargs or {}))
+        return self.read_until_pattern(re.escape(prompt), **kwargs)
 
     ############################################################################
     # Terminal State Management                                                #

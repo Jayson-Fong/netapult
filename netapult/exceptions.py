@@ -8,3 +8,7 @@ class DispatchException(NetapultBaseException):
 
 class UnknownModeException(NetapultBaseException):
     pass
+
+
+class PromptNotFoundException(NetapultBaseException):
+    pass
