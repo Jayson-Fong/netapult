@@ -36,6 +36,7 @@ class Client:
             )
 
         self.channel: netapult.channel.Channel = channel
+        self.protocol: str = channel.protocol_name
         self.delay_factor: float = delay_factor
         self.encoding: str = encoding
         self.errors: str = errors
@@ -53,10 +54,23 @@ class Client:
     # Channel Connection                                                       #
     ############################################################################
 
+    def initialize(self):
+        pass
+
     def connect(self):
         self.channel.connect()
+        self.initialize()
+
+    def cleanup(self):
+        pass
 
     def disconnect(self):
+        # noinspection PyBroadException
+        try:
+            self.cleanup()
+        except:
+            logger.exception("Encountered cleanup exception")
+
         self.channel.disconnect()
 
     ############################################################################
@@ -66,55 +80,74 @@ class Client:
     @overload
     def read(self, *args, text: Literal[True] = True, **kwargs) -> str: ...
 
-    # fmt: off
     @overload
     def read(
-            self, *args, text: Literal[False] = False,
-            encoding: str | None = None, errors: str | None = None, **kwargs
-    ) -> bytes:
-        ...
+        self,
+        *args,
+        text: Literal[False] = False,
+        encoding: str | None = None,
+        errors: str | None = None,
+        **kwargs,
+    ) -> bytes: ...
 
-    # fmt: off
     def read(
-            self, *args, text: bool = False,
-            encoding: str | None = None, errors: str | None = None, **kwargs
+        self,
+        *args,
+        text: bool = False,
+        encoding: str | None = None,
+        errors: str | None = None,
+        **kwargs,
     ) -> str | bytes:
         if text:
             return self._decode(
-                self.channel.read(*args, **kwargs),
-                encoding=encoding, errors=errors
+                self.channel.read(*args, **kwargs), encoding=encoding, errors=errors
             )
 
         return self.channel.read(*args, **kwargs)
 
-    # fmt: off
     @overload
     def read_until_pattern(
-            self, pattern: str | bytes, *args,
-            re_flags: int | re.RegexFlag = 0, max_buffer_size: int | None = None,
-            read_timeout: float | None = None, read_interval: float = 0.1,
-            lookback: int = 0, text: Literal[False] = False, **kwargs
-    ) -> tuple[bool, bytes]:
-        ...
+        self,
+        pattern: str | bytes,
+        *args,
+        re_flags: int | re.RegexFlag = 0,
+        max_buffer_size: int | None = None,
+        read_timeout: float | None = None,
+        read_interval: float = 0.1,
+        lookback: int = 0,
+        text: Literal[False] = False,
+        **kwargs,
+    ) -> tuple[bool, bytes]: ...
 
-    # fmt: off
     @overload
     def read_until_pattern(
-            self, pattern: str | bytes, *args,
-            re_flags: int | re.RegexFlag = 0, max_buffer_size: int | None = None,
-            read_timeout: float | None = None, read_interval: float = 0.1,
-            lookback: int = 0, text: Literal[True] = True,
-            encoding: str | None = None, errors: str | None = None, **kwargs
-    ) -> tuple[bool, str]:
-        ...
+        self,
+        pattern: str | bytes,
+        *args,
+        re_flags: int | re.RegexFlag = 0,
+        max_buffer_size: int | None = None,
+        read_timeout: float | None = None,
+        read_interval: float = 0.1,
+        lookback: int = 0,
+        text: Literal[True] = True,
+        encoding: str | None = None,
+        errors: str | None = None,
+        **kwargs,
+    ) -> tuple[bool, str]: ...
 
-    # fmt: off
     def read_until_pattern(
-            self, pattern: str | bytes, *args,
-            re_flags: int | re.RegexFlag = 0, max_buffer_size: int | None = None,
-            read_timeout: float | None = None, read_interval: float = 0.1,
-            lookback: int = 0, text: bool = False,
-            encoding: str | None = None, errors: str | None = None, **kwargs
+        self,
+        pattern: str | bytes,
+        *args,
+        re_flags: int | re.RegexFlag = 0,
+        max_buffer_size: int | None = None,
+        read_timeout: float | None = None,
+        read_interval: float = 0.1,
+        lookback: int = 0,
+        text: bool = False,
+        encoding: str | None = None,
+        errors: str | None = None,
+        **kwargs,
     ) -> tuple[bool, bytes | str]:
         if isinstance(pattern, str):
             pattern: bytes = self._encode(pattern, encoding=encoding, errors=errors)
@@ -124,8 +157,9 @@ class Client:
         pattern_found: bool = False
 
         start_time: float = time.time()
-        while ((max_buffer_size is None or len(buffer) < max_buffer_size)
-               and (read_timeout is None or time.time() - start_time < read_timeout)):
+        while (max_buffer_size is None or len(buffer) < max_buffer_size) and (
+            read_timeout is None or time.time() - start_time < read_timeout
+        ):
             buffer += self.channel.read(*args, **kwargs)
 
             if pattern.search(buffer, len(buffer) - lookback if lookback else 0):
@@ -144,25 +178,25 @@ class Client:
     ############################################################################
 
     @overload
-    def write(self, content: str, *args, **kwargs) -> None:
-        ...
+    def write(self, content: str, *args, **kwargs) -> None: ...
 
     # fmt: off
     @overload
     def write(
-            self, content: bytes, *args,
-            encoding: str | None = None, errors: str | None = None, **kwargs
-    ) -> None:
-        ...
+        self, content: bytes, *args,
+        encoding: str | None = None, errors: str | None = None,
+        **kwargs,
+    ) -> None: ...
 
-    # fmt: off
     def write(
-            self, content: str | bytes, *args,
-            encoding: str | None = None, errors: str | None = None, **kwargs
+        self, content: str | bytes, *args,
+        encoding: str | None = None, errors: str | None = None,
+        **kwargs,
     ) -> None:
         return self.channel.write(
             self._encode(content, encoding=encoding, errors=errors), *args, **kwargs
         )
+    # fmt: on
 
     ############################################################################
     # Command Execution                                                        #
@@ -177,11 +211,18 @@ class Client:
         return content.strip()
 
     def find_prompt(
-            self, *args, read_delay: float = 1, text: bool = False, prompt_pattern: str | bytes | None = None,
-            re_flags: int | re.RegexFlag | None = None,
-            encoding: str | None = None, errors: str | None = None,
-            return_sequence: str | bytes | None = None, response_return_sequence: str | bytes | None = None,
-            write_kwargs: dict[str, Any] | None = None, **kwargs
+        self,
+        *args,
+        read_delay: float = 1,
+        text: bool = False,
+        prompt_pattern: str | bytes | None = None,
+        re_flags: int | re.RegexFlag | None = None,
+        encoding: str | None = None,
+        errors: str | None = None,
+        return_sequence: str | bytes | None = None,
+        response_return_sequence: str | bytes | None = None,
+        write_kwargs: dict[str, Any] | None = None,
+        **kwargs,
     ):
         return_sequence, response_return_sequence, prompt_pattern = self._normalize(
             (
@@ -189,7 +230,8 @@ class Client:
                 (response_return_sequence, self.response_return_sequence),
                 (prompt_pattern, self.prompt_pattern),
             ),
-            encoding=encoding, errors=errors
+            encoding=encoding,
+            errors=errors,
         )
 
         re_flags = self.prompt_re_flags if re_flags is None else re_flags
@@ -209,7 +251,9 @@ class Client:
         content: bytes
         end_index: int = len(content)
 
-        prompt_search_pattern: re.Pattern[bytes] = re.compile(prompt_pattern, flags=re_flags)
+        prompt_search_pattern: re.Pattern[bytes] = re.compile(
+            prompt_pattern, flags=re_flags
+        )
 
         while end_index > 0:
             # Find our first line of usable content starting from the end
@@ -217,7 +261,9 @@ class Client:
             if newline_index == -1:
                 return False, None
 
-            match: re.Match[bytes] | None = prompt_search_pattern.search(content[newline_index:])
+            match: re.Match[bytes] | None = prompt_search_pattern.search(
+                content[newline_index:]
+            )
             if match:
                 prompt: bytes = self._extract_prompt(
                     content[newline_index:end_index],
@@ -235,14 +281,24 @@ class Client:
         return None
 
     def run_command(
-            self, command: str | bytes, prompt: str | bytes | None = None, find_prompt_kwargs: dict[str, Any] | None = None, encoding: str | None = None,
-            errors: str | None = None, write_kwargs: dict[str, Any] | None = None, **kwargs
+        self,
+        command: str | bytes,
+        prompt: str | bytes | None = None,
+        find_prompt_kwargs: dict[str, Any] | None = None,
+        encoding: str | None = None,
+        errors: str | None = None,
+        write_kwargs: dict[str, Any] | None = None,
+        **kwargs,
     ) -> tuple[bool, str | bytes]:
-        prompt: bytes | None = self._normalize(prompt, self.prompt, encoding=encoding, errors=errors)
+        prompt: bytes | None = self._normalize(
+            prompt, self.prompt, encoding=encoding, errors=errors
+        )
         if not prompt:
             prompt_found, prompt = self.find_prompt(**(find_prompt_kwargs or {}))
             if not prompt_found:
-                raise netapult.exceptions.PromptNotFoundException("Failed to find prompt")
+                raise netapult.exceptions.PromptNotFoundException(
+                    "Failed to find prompt"
+                )
 
         self.write(command, **(write_kwargs or {}))
         return self.read_until_pattern(re.escape(prompt), **kwargs)
@@ -271,7 +327,9 @@ class Client:
     # Utilities                                                                #
     ############################################################################
 
-    def _encode(self, data: str | bytes, encoding: str | None = None, errors: str | None = None) -> bytes:
+    def _encode(
+        self, data: str | bytes, encoding: str | None = None, errors: str | None = None
+    ) -> bytes:
         if isinstance(data, bytes):
             return data
 
@@ -280,7 +338,9 @@ class Client:
             errors=errors or self.errors,
         )
 
-    def _decode(self, data: str | bytes, encoding: str | None = None, errors: str | None = None) -> str:
+    def _decode(
+        self, data: str | bytes, encoding: str | None = None, errors: str | None = None
+    ) -> str:
         if isinstance(data, str):
             return data
 
@@ -290,9 +350,13 @@ class Client:
         )
 
     def _normalize(
-            self, proposed: str | bytes | Iterable[tuple[str | bytes | None, str | bytes | None]] | None,
-            fallback: str | bytes | None = None,
-            encoding: str | None = None, errors: str | None = None
+        self,
+        proposed: (
+            str | bytes | Iterable[tuple[str | bytes | None, str | bytes | None]] | None
+        ),
+        fallback: str | bytes | None = None,
+        encoding: str | None = None,
+        errors: str | None = None,
     ) -> bytes | tuple[bytes | None, ...] | None:
         if isinstance(proposed, Iterable) and not isinstance(proposed, (str, bytes)):
             normalized_entries: list[bytes | None] = []
@@ -317,9 +381,9 @@ class Client:
         return self
 
     def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc_val: BaseException | None,
-            exc_tb: TracebackType | None,
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         self.disconnect()

@@ -16,7 +16,7 @@ PROTOCOLS: "EntryPoints" = entry_points(group="netapult.protocol")
 
 def _extract_requested_class(
     name: str, builtins: "EntryPoints", overrides: dict[str, str | type] | None
-):
+) -> type | None:
     if overrides is not None and name in overrides:
         requested_class: str | type[netapult.client.Client] = overrides[name]
         if isinstance(requested_class, str):
@@ -26,10 +26,10 @@ def _extract_requested_class(
 
         return requested_class
 
-    if name in builtins:
+    try:
         return builtins[name].load()
-
-    return None
+    except KeyError:
+        return None
 
 
 def dispatch(
@@ -37,7 +37,7 @@ def dispatch(
     protocol: str,
     device_overrides: dict[str, str | type[netapult.client.Client]] | None = None,
     protocol_overrides: dict[str, str | type] | None = None,
-    protocol_kwargs: dict[str, Any] | None = None,
+    protocol_options: dict[str, Any] | None = None,
     **kwargs,
 ) -> netapult.client.Client:
     client_class: type[netapult.client.Client] | None = _extract_requested_class(
@@ -56,4 +56,6 @@ def dispatch(
     if protocol_class is None:
         raise netapult.exceptions.DispatchException(f"Unknown protocol: {protocol}")
 
-    return client_class(channel=protocol_class(**(protocol_kwargs or {})), **kwargs)
+    return client_class(
+        channel=protocol_class(protocol, **(protocol_options or {})), **kwargs
+    )

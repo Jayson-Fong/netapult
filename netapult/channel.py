@@ -6,16 +6,16 @@ class Channel:
         self.protocol_name: str = protocol_name
 
     def connect(self):
-        pass
+        raise NotImplementedError
 
     def disconnect(self):
-        pass
+        raise NotImplementedError
 
-    def read(self, *args, **kwargs):
-        pass
+    def read(self):
+        raise NotImplementedError
 
-    def write(self, payload: bytes, *args, **kwargs):
-        pass
+    def write(self, payload: bytes):
+        raise NotImplementedError
 
     def __enter__(self):
         self.connect()

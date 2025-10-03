@@ -32,3 +32,6 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/Jayson-Fong/netapult"
 Issues = "https://github.com/Jayson-Fong/netapult/issues"
+
+[project.entry-points.'netapult.device']
+generic = "netapult.client:Client"
