@@ -1,7 +1,15 @@
+"""
+Abstract channel
+"""
+from abc import abstractmethod
 from types import TracebackType
 
 
 class Channel:
+    """
+    Abstract channel definition
+    """
+
     def __init__(self, protocol_name: str):
         self.protocol_name: str = protocol_name
 
@@ -11,11 +19,11 @@ class Channel:
     def disconnect(self):
         raise NotImplementedError
 
-    def read(self):
-        raise NotImplementedError
+    @abstractmethod
+    def read(self): ...
 
-    def write(self, payload: bytes):
-        raise NotImplementedError
+    @abstractmethod
+    def write(self, payload: bytes): ...
 
     def __enter__(self):
         self.connect()
