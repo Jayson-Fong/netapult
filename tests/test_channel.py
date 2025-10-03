@@ -31,10 +31,10 @@ class BasicChannel(netapult.channel.Channel):
 
         return content
 
-    def write(self, data: bytes, *args, **kwargs):
-        self.output.write(data)
+    def write(self, payload: bytes, *args, **kwargs):
+        self.output.write(payload)
 
-        for _ in range(data.count(b"\n")):
+        for _ in range(payload.count(b"\n")):
             self.output.write(b"localhost> ")
 
 

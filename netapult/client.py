@@ -1,9 +1,11 @@
 import re
 import time
+from contextlib import contextmanager
 from types import TracebackType
 from typing import Literal, overload, Self, Iterable, Any
 
 import netapult.channel
+import netapult.exceptions
 
 
 class Client:
@@ -218,6 +220,22 @@ class Client:
         return None
 
     ############################################################################
+    # Terminal State Management                                                #
+    ############################################################################
+
+    def _enter_mode(self, name: str):
+        raise netapult.exceptions.UnknownModeException(f"Unknown mode: {name}")
+
+    def _exit_mode(self, name: str):
+        raise netapult.exceptions.UnknownModeException(f"Unknown mode: {name}")
+
+    @contextmanager
+    def mode(self, name: str):
+        self._enter_mode(name)
+        yield self
+        self._exit_mode(name)
+
+    ############################################################################
     # Utilities                                                                #
     ############################################################################
 
@@ -247,7 +265,9 @@ class Client:
         if isinstance(proposed, Iterable) and not isinstance(proposed, (str, bytes)):
             normalized_entries: list[bytes | None] = []
             for entry in proposed:
-                normalized_entries.append(self._normalize(*entry, encoding=encoding, errors=errors))
+                normalized_entries.append(
+                    self._normalize(*entry, encoding=encoding, errors=errors)
+                )
 
             return tuple(normalized_entries)
 

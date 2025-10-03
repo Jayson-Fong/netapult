@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 import netapult.client
 import netapult.channel
 import netapult.util
+import netapult.exceptions
 
 if TYPE_CHECKING:
     # noinspection PyProtectedMember
@@ -44,13 +45,13 @@ def dispatch(
     )
 
     if client_class is None:
-        raise ValueError(f"Unknown device type: {device_type}")
+        raise netapult.exceptions.DispatchException(f"Unknown device type: {device_type}")
 
     protocol_class: type[netapult.channel.Channel] | None = _extract_requested_class(
         protocol, PROTOCOLS, protocol_overrides
     )
 
     if protocol_class is None:
-        raise ValueError(f"Unknown protocol: {protocol}")
+        raise netapult.exceptions.DispatchException(f"Unknown protocol: {protocol}")
 
     return client_class(channel=protocol_class(**(protocol_kwargs or {})), **kwargs)
