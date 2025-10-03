@@ -223,17 +223,21 @@ class Client:
     # Terminal State Management                                                #
     ############################################################################
 
-    def _enter_mode(self, name: str):
+    # noinspection PyUnusedLocal
+    def enter_mode(self, name: str, *args, **kwargs):
+        del args, kwargs
         raise netapult.exceptions.UnknownModeException(f"Unknown mode: {name}")
 
-    def _exit_mode(self, name: str):
+    # noinspection PyUnusedLocal
+    def exit_mode(self, name: str, *args, **kwargs):
+        del args, kwargs
         raise netapult.exceptions.UnknownModeException(f"Unknown mode: {name}")
 
     @contextmanager
-    def mode(self, name: str):
-        self._enter_mode(name)
+    def mode(self, name: str, *args, **kwargs):
+        self.enter_mode(name, *args, **kwargs)
         yield self
-        self._exit_mode(name)
+        self.exit_mode(name, *args, **kwargs)
 
     ############################################################################
     # Utilities                                                                #
