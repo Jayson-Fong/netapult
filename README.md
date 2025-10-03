@@ -7,7 +7,7 @@
 
 <div align="center">
 
-[💼 Purpose](#purpose)
+[💼 Purpose](#purpose) | [🏁 Usage](#usage)
 
 </div>
 
@@ -22,9 +22,9 @@ these terminal-based devices and the collection of resulting data.
 ### Use Cases
 
 <details style="border: 1px solid; border-radius: 8px; padding: 8px; margin-top: 4px;">
-<summary>🤖 Network Automation</summary>
+<summary>🤖 Network Automation and Orchestration</summary>
 
-Programmatically update network device configurations.
+Automate repetitive tasks such as configuration management, asset inventorying, and compliance checking.
 
 </details>
 
@@ -34,3 +34,16 @@ Programmatically update network device configurations.
 Acquire device information at scale to enable environment-aware risk management.
 
 </details>
+
+<details style="border: 1px solid; border-radius: 8px; padding: 8px; margin-top: 4px;">
+<summary>📚 Training</summary>
+
+Rapidly configure a lab environment for trainees or validate their configuration.
+
+</details>
+
+# Usage
+
+The framework does **not** ship with a protocol or device-specific implementations in an effort to provide a 
+maintainable, plugin-like structure such that framework's package does not require updating to alter a protocol or 
+device implementation.
