@@ -5,9 +5,6 @@ build-backend = "hatchling.build"
 [project]
 name = "netapult"
 version = "0.0.1"
-dependencies = [
-
-]
 requires-python = ">=3.11"
 authors = [
     {name = "Jayson Fong", email = "jayson.fong@gatech.edu"}
@@ -27,6 +24,11 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: System :: Networking",
     "Typing :: Typed"
+]
+
+[project.optional-dependencies]
+ssh = [
+    "netapult-ssh==0.0.1"
 ]
 
 [project.urls]

@@ -1,6 +1,6 @@
 <!--suppress HtmlDeprecatedAttribute-->
 <div align="center">
-   <h1>📡 Netapult</h1>
+   <h1>🏹 Netapult</h1>
 </div>
 
 <hr />
