@@ -67,7 +67,9 @@ As the framework does not provide any protocol or device-specific implementation
 efficiently use netapult. For example, to integrate an SSH capabilities, 
 [netapult-ssh](https://pypi.org/project/netapult-ssh/) is available and offered as an extra dependency.
 
-The following example leverages netapult-ssh to execute a command and retrieve its response:
+The following example leverages [netapult-ssh](https://pypi.org/project/netapult-ssh/) to execute a command and retrieve 
+its response:
+
 ```python
 import time
 
