@@ -3,7 +3,7 @@ import re
 import time
 from contextlib import contextmanager
 from types import TracebackType
-from typing import Self, Any
+from typing import Self, Any, overload
 
 import netapult.channel
 import netapult.exceptions
@@ -85,11 +85,28 @@ class Client:
     # Channel Reading                                                          #
     ############################################################################
 
+    @overload
+    def read(self, *args, text: True = True, **kwargs) -> str: ...
+
     # noinspection PyUnusedLocal
     @normalize.response.decode
     def read(self, *args, **kwargs) -> bytes:
         # noinspection PyArgumentList
         return self.channel.read(*args, **kwargs)
+
+    @overload
+    def read_until_pattern(
+        self,
+        pattern: bytes,
+        *args,
+        re_flags: int | re.RegexFlag = 0,
+        max_buffer_size: int | None = None,
+        read_timeout: float | None = None,
+        read_interval: float = 0.1,
+        lookback: int = 0,
+        text: True = True,
+        **kwargs,
+    ) -> tuple[bool, str]: ...
 
     # noinspection PyUnusedLocal
     @normalize.response.decode
@@ -104,7 +121,7 @@ class Client:
         read_interval: float = 0.1,
         lookback: int = 0,
         **kwargs,
-    ) -> tuple[bool, bytes | str]:
+    ) -> tuple[bool, bytes]:
         logger.info("Searching for pattern: %s", pattern)
 
         buffer: bytearray = bytearray()
@@ -147,6 +164,20 @@ class Client:
 
         return netapult.util.strip_ansi(content).strip()
 
+    @overload
+    def find_prompt(
+            self,
+            *args,
+            read_delay: float = 1,
+            prompt_pattern: bytes | DEFAULT_TYPE = DEFAULT,
+            re_flags: int | re.RegexFlag | None = None,
+            return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
+            response_return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
+            write_kwargs: dict[str, Any] | None = None,
+            text: True = True,
+            **kwargs,
+    ) -> tuple[bool, str | None]: ...
+
     # noinspection PyUnusedLocal
     # pylint: disable=too-many-locals,too-many-arguments
     @normalize.response.decode
@@ -165,7 +196,8 @@ class Client:
         response_return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
         write_kwargs: dict[str, Any] | None = None,
         **kwargs,
-    ):
+    ) -> tuple[bool, bytes | None]:
+        # TODO: Remove the bool? It seems unnecessary.
         re_flags = self.prompt_re_flags if re_flags is None else re_flags
 
         # Send a newline to force our terminal into sending a prompt
@@ -224,6 +256,19 @@ class Client:
             command = command + return_sequence
 
         return command
+
+    @overload
+    def run_command(
+        self,
+        command: bytes,
+        prompt: bytes | DEFAULT_TYPE = DEFAULT,
+        return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
+        normalize_command: bool | DEFAULT_TYPE = DEFAULT,
+        find_prompt_kwargs: dict[str, Any] | None = None,
+        write_kwargs: dict[str, Any] | None = None,
+        text: True = True,
+        **kwargs,
+    ) -> tuple[bool, str]: ...
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     @normalize.response.decode
