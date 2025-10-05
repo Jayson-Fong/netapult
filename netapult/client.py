@@ -12,8 +12,10 @@ from netapult.util import normalize
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-instance-attributes
 class Client:
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
     @normalize(
         "prompt_pattern", "prompt", "return_sequence", "response_return_sequence"
     )
@@ -69,9 +71,10 @@ class Client:
 
     def disconnect(self):
         # noinspection PyBroadException
+        # pylint: disable=broad-exception-caught
         try:
             self.cleanup()
-        except:
+        except Exception:
             logger.exception("Encountered cleanup exception")
 
         self.channel.disconnect()
@@ -108,6 +111,7 @@ class Client:
         # noinspection PyArgumentList
         return self.channel.read(*args, **kwargs)
 
+    # pylint: disable=too-many-arguments
     @overload
     def read_until_pattern(
         self,
@@ -223,6 +227,7 @@ class Client:
         return netapult.util.strip_ansi(content).strip()
 
     # noinspection PyUnusedLocal
+    # pylint: disable=too-many-locals,too-many-arguments
     @normalize(
         1,
         return_sequence="return_sequence",
@@ -308,6 +313,7 @@ class Client:
 
         return command
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     @normalize(0, prompt="prompt", normalize_command="normalize_commands")
     def run_command(
         self,

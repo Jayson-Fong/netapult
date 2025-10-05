@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     import netapult.client
 
 NAME_PATTERN: re.Pattern[str] = re.compile(
-    r"(?P<module>[\w.]+)\s*" r"(:\s*(?P<attr>[\w.]+)\s*)?" r"((?P<extras>\[.*\])\s*)?$"
+    r"(?P<module>[\w.]+)\s*(:\s*(?P<attr>[\w.]+)\s*)?((?P<extras>\[.*])\s*)?$"
 )
 
 
@@ -19,6 +19,7 @@ def load_named_object(name: str) -> Any:
     return functools.reduce(getattr, attrs, module)
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def apply_normalization(
     bound: inspect.BoundArguments,
     keyword: str,
