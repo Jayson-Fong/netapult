@@ -1,5 +1,8 @@
-class NetapultBaseException(Exception):
-    pass
+import abc
+
+
+class NetapultBaseException(Exception, abc.ABC):
+    """Exception raised by Netapult"""
 
 
 class DispatchException(NetapultBaseException):

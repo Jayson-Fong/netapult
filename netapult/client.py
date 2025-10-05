@@ -21,6 +21,7 @@ class Client:
     @normalize.params.encode_argument(
         "prompt_pattern", "prompt", "return_sequence", "response_return_sequence"
     )
+    @overload
     def __init__(
         self,
         channel: netapult.channel.Channel,
@@ -34,7 +35,42 @@ class Client:
         prompt_re_flags: int | re.RegexFlag = 0,
         normalize_commands: bool = True,
         **kwargs,
+    ): ...
+
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+    @normalize.params.encode_argument(
+        "prompt_pattern", "prompt", "return_sequence", "response_return_sequence"
+    )
+    def __init__(
+        self,
+        channel: netapult.channel.Channel,
+        delay_factor: float = 1.0,
+        encoding: str = "utf-8",
+        errors: str = "backslashreplace",
+        return_sequence: bytes = b"\n",
+        prompt: bytes | None = None,
+        prompt_pattern: bytes = rb"(?:\$|#|%|>) ",
+        response_return_sequence: bytes = b"\n\r",
+        prompt_re_flags: int | re.RegexFlag = 0,
+        normalize_commands: bool = True,
+        **kwargs,
     ):
+        """
+        Initializes the client.
+
+        :param channel: Channel to read and write data to/from.
+        :param delay_factor: Factor to multiply delay times by.
+        :param encoding: Encoding to use.
+        :param errors: Encoding error resolution strategy.
+        :param return_sequence: Sequence of characters to use as return.
+        :param prompt: System prompt.
+        :param prompt_pattern: Regular expression to match the prompt.
+        :param response_return_sequence: Sequence of characters to identify line breaks.
+        :param prompt_re_flags: Regular expression flags to match the prompt.
+        :param normalize_commands: Whether to normalize commands before executing.
+        :param kwargs: Unused - provided to prevent errors.
+        """
+
         # kwargs is accepted here to generically accept certain keyword
         # arguments such as privilege passwords, which may not be
         # available universally, but our user may want to assume it is.
