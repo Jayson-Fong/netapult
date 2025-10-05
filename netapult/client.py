@@ -3,17 +3,22 @@ import re
 import time
 from contextlib import contextmanager
 from types import TracebackType
-from typing import Literal, overload, Self, Iterable, Any
+from typing import overload, Self, Any
 
 import netapult.channel
 import netapult.exceptions
-
+from netapult.util import normalize
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-instance-attributes
 class Client:
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+    @normalize(
+        "prompt_pattern", "prompt", "return_sequence", "response_return_sequence"
+    )
     def __init__(
         self,
         channel: netapult.channel.Channel,
@@ -23,8 +28,9 @@ class Client:
         return_sequence: str | bytes = b"\n",
         prompt: str | bytes | None = None,
         prompt_pattern: str | bytes = rb"(?:\$|#|%|>) ",
-        response_return_sequence: str | bytes = b"\n",
+        response_return_sequence: str | bytes = b"\n\r",
         prompt_re_flags: int | re.RegexFlag = 0,
+        normalize_commands: bool = True,
         **kwargs,
     ):
         # kwargs is accepted here to generically accept certain keyword
@@ -40,14 +46,13 @@ class Client:
         self.delay_factor: float = delay_factor
         self.encoding: str = encoding
         self.errors: str = errors
+        self.normalize_commands = normalize_commands
 
-        self.return_sequence: bytes = self._encode(return_sequence)
-        self.response_return_sequence: bytes = self._encode(response_return_sequence)
+        self.return_sequence: bytes = return_sequence
+        self.response_return_sequence: bytes = response_return_sequence
 
-        self.prompt: bytes | None = self._encode(prompt) if prompt else None
-        self.prompt_pattern: bytes | None = (
-            self._encode(prompt_pattern) if prompt_pattern else None
-        )
+        self.prompt: bytes | None = prompt
+        self.prompt_pattern: bytes | None = prompt_pattern
         self.prompt_re_flags: int | re.RegexFlag = prompt_re_flags
 
     ############################################################################
@@ -66,9 +71,10 @@ class Client:
 
     def disconnect(self):
         # noinspection PyBroadException
+        # pylint: disable=broad-exception-caught
         try:
             self.cleanup()
-        except:
+        except Exception:
             logger.exception("Encountered cleanup exception")
 
         self.channel.disconnect()
@@ -78,18 +84,20 @@ class Client:
     ############################################################################
 
     @overload
-    def read(self, *args, text: Literal[True] = True, **kwargs) -> str: ...
+    def read(self, *args, text: True = True, **kwargs) -> str: ...
 
     @overload
     def read(
         self,
         *args,
-        text: Literal[False] = False,
+        text: False = False,
         encoding: str | None = None,
         errors: str | None = None,
         **kwargs,
     ) -> bytes: ...
 
+    # noinspection PyUnusedLocal
+    @normalize(0)
     def read(
         self,
         *args,
@@ -98,13 +106,12 @@ class Client:
         errors: str | None = None,
         **kwargs,
     ) -> str | bytes:
-        if text:
-            return self._decode(
-                self.channel.read(*args, **kwargs), encoding=encoding, errors=errors
-            )
+        del text, encoding, errors
 
+        # noinspection PyArgumentList
         return self.channel.read(*args, **kwargs)
 
+    # pylint: disable=too-many-arguments
     @overload
     def read_until_pattern(
         self,
@@ -115,7 +122,7 @@ class Client:
         read_timeout: float | None = None,
         read_interval: float = 0.1,
         lookback: int = 0,
-        text: Literal[False] = False,
+        text: False = False,
         **kwargs,
     ) -> tuple[bool, bytes]: ...
 
@@ -129,12 +136,14 @@ class Client:
         read_timeout: float | None = None,
         read_interval: float = 0.1,
         lookback: int = 0,
-        text: Literal[True] = True,
+        text: True = True,
         encoding: str | None = None,
         errors: str | None = None,
         **kwargs,
     ) -> tuple[bool, str]: ...
 
+    # noinspection PyUnusedLocal
+    @normalize(1, "pattern")
     def read_until_pattern(
         self,
         pattern: str | bytes,
@@ -149,8 +158,11 @@ class Client:
         errors: str | None = None,
         **kwargs,
     ) -> tuple[bool, bytes | str]:
-        if isinstance(pattern, str):
-            pattern: bytes = self._encode(pattern, encoding=encoding, errors=errors)
+        del text, encoding, errors
+
+        pattern: bytes
+
+        logger.info("Searching for pattern: %s", pattern)
 
         buffer: bytearray = bytearray()
         pattern: re.Pattern[bytes] = re.compile(pattern, flags=re_flags)
@@ -160,6 +172,7 @@ class Client:
         while (max_buffer_size is None or len(buffer) < max_buffer_size) and (
             read_timeout is None or time.time() - start_time < read_timeout
         ):
+            # noinspection PyArgumentList
             buffer += self.channel.read(*args, **kwargs)
 
             if pattern.search(buffer, len(buffer) - lookback if lookback else 0):
@@ -168,9 +181,6 @@ class Client:
 
             time.sleep(read_interval * self.delay_factor)
 
-        if text:
-            return pattern_found, self._decode(buffer, encoding=encoding, errors=errors)
-
         return pattern_found, bytes(buffer)
 
     ############################################################################
@@ -178,25 +188,31 @@ class Client:
     ############################################################################
 
     @overload
-    def write(self, content: str, *args, **kwargs) -> None: ...
+    def write(self, content: str, **kwargs) -> None: ...
 
-    # fmt: off
     @overload
     def write(
-        self, content: bytes, *args,
-        encoding: str | None = None, errors: str | None = None,
+        self,
+        content: bytes,
+        encoding: str | None = None,
+        errors: str | None = None,
         **kwargs,
     ) -> None: ...
 
+    # noinspection PyUnusedLocal
+    @normalize("content")
     def write(
-        self, content: str | bytes, *args,
-        encoding: str | None = None, errors: str | None = None,
+        self,
+        content: str | bytes,
+        encoding: str | None = None,
+        errors: str | None = None,
         **kwargs,
     ) -> None:
-        return self.channel.write(
-            self._encode(content, encoding=encoding, errors=errors), *args, **kwargs
-        )
-    # fmt: on
+        del encoding, errors
+
+        content: bytes
+        # noinspection PyArgumentList
+        return self.channel.write(content, **kwargs)
 
     ############################################################################
     # Command Execution                                                        #
@@ -208,8 +224,16 @@ class Client:
     ) -> bytes:
         del pattern, re_flags
 
-        return content.strip()
+        return netapult.util.strip_ansi(content).strip()
 
+    # noinspection PyUnusedLocal
+    # pylint: disable=too-many-locals,too-many-arguments
+    @normalize(
+        1,
+        return_sequence="return_sequence",
+        response_return_sequence="response_return_sequence",
+        prompt_pattern="prompt_pattern",
+    )
     def find_prompt(
         self,
         *args,
@@ -224,15 +248,8 @@ class Client:
         write_kwargs: dict[str, Any] | None = None,
         **kwargs,
     ):
-        return_sequence, response_return_sequence, prompt_pattern = self._normalize(
-            (
-                (return_sequence, self.return_sequence),
-                (response_return_sequence, self.response_return_sequence),
-                (prompt_pattern, self.prompt_pattern),
-            ),
-            encoding=encoding,
-            errors=errors,
-        )
+        del text, encoding, errors
+        prompt_pattern: bytes | None
 
         re_flags = self.prompt_re_flags if re_flags is None else re_flags
 
@@ -257,7 +274,9 @@ class Client:
 
         while end_index > 0:
             # Find our first line of usable content starting from the end
-            newline_index: int = content.rfind(response_return_sequence, 0, end_index)
+            newline_index: int = netapult.util.rfind_multi_char(
+                content, tuple(response_return_sequence), 0, end_index
+            )
             if newline_index == -1:
                 return False, None
 
@@ -271,34 +290,55 @@ class Client:
                     re_flags=re_flags,
                 )
 
-                if text:
-                    return True, self._decode(prompt, encoding=encoding, errors=errors)
-
                 return True, prompt
 
             end_index = newline_index
 
-        return None
+        return False, None
 
+    # noinspection PyUnusedLocal
+    @normalize("command", return_sequence="return_sequence")
+    def _normalize_command(
+        self,
+        command: str | bytes,
+        return_sequence: str | bytes | None = None,
+        encoding: str | None = None,
+        errors: str | None = None,
+    ) -> bytes:
+        del encoding, errors
+        command: bytes
+
+        if not command.endswith(return_sequence):
+            command = command + return_sequence
+
+        return command
+
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    @normalize(0, prompt="prompt", normalize_command="normalize_commands")
     def run_command(
         self,
         command: str | bytes,
         prompt: str | bytes | None = None,
+        return_sequence: str | bytes | None = None,
+        normalize_command: bool | None = None,
         find_prompt_kwargs: dict[str, Any] | None = None,
-        encoding: str | None = None,
-        errors: str | None = None,
         write_kwargs: dict[str, Any] | None = None,
         **kwargs,
     ) -> tuple[bool, str | bytes]:
-        prompt: bytes | None = self._normalize(
-            prompt, self.prompt, encoding=encoding, errors=errors
-        )
         if not prompt:
             prompt_found, prompt = self.find_prompt(**(find_prompt_kwargs or {}))
             if not prompt_found:
                 raise netapult.exceptions.PromptNotFoundException(
                     "Failed to find prompt"
                 )
+
+        if normalize_command:
+            command: bytes = self._normalize_command(
+                command,
+                return_sequence,
+                encoding=kwargs.get("encoding"),
+                errors=kwargs.get("errors"),
+            )
 
         self.write(command, **(write_kwargs or {}))
         return self.read_until_pattern(re.escape(prompt), **kwargs)
@@ -322,55 +362,6 @@ class Client:
         self.enter_mode(name, *args, **kwargs)
         yield self
         self.exit_mode(name, *args, **kwargs)
-
-    ############################################################################
-    # Utilities                                                                #
-    ############################################################################
-
-    def _encode(
-        self, data: str | bytes, encoding: str | None = None, errors: str | None = None
-    ) -> bytes:
-        if isinstance(data, bytes):
-            return data
-
-        return data.encode(
-            encoding=encoding or self.encoding,
-            errors=errors or self.errors,
-        )
-
-    def _decode(
-        self, data: str | bytes, encoding: str | None = None, errors: str | None = None
-    ) -> str:
-        if isinstance(data, str):
-            return data
-
-        return data.decode(
-            encoding=encoding or self.encoding,
-            errors=errors or self.errors,
-        )
-
-    def _normalize(
-        self,
-        proposed: (
-            str | bytes | Iterable[tuple[str | bytes | None, str | bytes | None]] | None
-        ),
-        fallback: str | bytes | None = None,
-        encoding: str | None = None,
-        errors: str | None = None,
-    ) -> bytes | tuple[bytes | None, ...] | None:
-        if isinstance(proposed, Iterable) and not isinstance(proposed, (str, bytes)):
-            normalized_entries: list[bytes | None] = []
-            for entry in proposed:
-                normalized_entries.append(
-                    self._normalize(*entry, encoding=encoding, errors=errors)
-                )
-
-            return tuple(normalized_entries)
-
-        if proposed is None:
-            return fallback
-
-        return self._encode(proposed, encoding=encoding, errors=errors)
 
     ############################################################################
     # Context Manager                                                          #

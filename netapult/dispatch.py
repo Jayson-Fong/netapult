@@ -56,6 +56,7 @@ def dispatch(
     if protocol_class is None:
         raise netapult.exceptions.DispatchException(f"Unknown protocol: {protocol}")
 
+    # noinspection PyArgumentList
     return client_class(
         channel=protocol_class(protocol, **(protocol_options or {})), **kwargs
     )
