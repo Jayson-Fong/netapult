@@ -8,7 +8,7 @@ from types import TracebackType
 
 class Channel:
     """
-    Abstract channel definition
+    Abstract communication channel interface.
     """
 
     def __init__(self, protocol_name: str):

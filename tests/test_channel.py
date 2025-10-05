@@ -17,7 +17,7 @@ class BasicChannel(netapult.channel.Channel):
         current_date: str = datetime.date.today().isoformat()
         self.output.seek(0, io.SEEK_END)
         self.output.write(b"Current time: " + current_date.encode() + b"\n")
-        time.sleep(random.randrange(0, 5))
+        time.sleep(random.randrange(0, 3))
         self.output.seek(0, io.SEEK_END)
         self.output.write(b"localhost> ")
 

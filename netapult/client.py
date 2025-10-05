@@ -3,11 +3,13 @@ import re
 import time
 from contextlib import contextmanager
 from types import TracebackType
-from typing import overload, Self, Any
+from typing import Self, Any
 
 import netapult.channel
 import netapult.exceptions
-from netapult.util import normalize
+from netapult import normalize
+import netapult.util
+from netapult.netapult_globals import DEFAULT, DEFAULT_TYPE
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 class Client:
 
     # pylint: disable=too-many-positional-arguments,too-many-arguments
-    @normalize(
+    @normalize.params.encode_argument(
         "prompt_pattern", "prompt", "return_sequence", "response_return_sequence"
     )
     def __init__(
@@ -25,10 +27,10 @@ class Client:
         delay_factor: float = 1.0,
         encoding: str = "utf-8",
         errors: str = "backslashreplace",
-        return_sequence: str | bytes = b"\n",
-        prompt: str | bytes | None = None,
-        prompt_pattern: str | bytes = rb"(?:\$|#|%|>) ",
-        response_return_sequence: str | bytes = b"\n\r",
+        return_sequence: bytes = b"\n",
+        prompt: bytes | None = None,
+        prompt_pattern: bytes = rb"(?:\$|#|%|>) ",
+        response_return_sequence: bytes = b"\n\r",
         prompt_re_flags: int | re.RegexFlag = 0,
         normalize_commands: bool = True,
         **kwargs,
@@ -83,85 +85,26 @@ class Client:
     # Channel Reading                                                          #
     ############################################################################
 
-    @overload
-    def read(self, *args, text: True = True, **kwargs) -> str: ...
-
-    @overload
-    def read(
-        self,
-        *args,
-        text: False = False,
-        encoding: str | None = None,
-        errors: str | None = None,
-        **kwargs,
-    ) -> bytes: ...
-
     # noinspection PyUnusedLocal
-    @normalize(0)
-    def read(
-        self,
-        *args,
-        text: bool = False,
-        encoding: str | None = None,
-        errors: str | None = None,
-        **kwargs,
-    ) -> str | bytes:
-        del text, encoding, errors
-
+    @normalize.response.decode
+    def read(self, *args, **kwargs) -> bytes:
         # noinspection PyArgumentList
         return self.channel.read(*args, **kwargs)
 
-    # pylint: disable=too-many-arguments
-    @overload
-    def read_until_pattern(
-        self,
-        pattern: str | bytes,
-        *args,
-        re_flags: int | re.RegexFlag = 0,
-        max_buffer_size: int | None = None,
-        read_timeout: float | None = None,
-        read_interval: float = 0.1,
-        lookback: int = 0,
-        text: False = False,
-        **kwargs,
-    ) -> tuple[bool, bytes]: ...
-
-    @overload
-    def read_until_pattern(
-        self,
-        pattern: str | bytes,
-        *args,
-        re_flags: int | re.RegexFlag = 0,
-        max_buffer_size: int | None = None,
-        read_timeout: float | None = None,
-        read_interval: float = 0.1,
-        lookback: int = 0,
-        text: True = True,
-        encoding: str | None = None,
-        errors: str | None = None,
-        **kwargs,
-    ) -> tuple[bool, str]: ...
-
     # noinspection PyUnusedLocal
-    @normalize(1, "pattern")
+    @normalize.response.decode
+    @normalize.params.encode
     def read_until_pattern(
         self,
-        pattern: str | bytes,
+        pattern: bytes,
         *args,
         re_flags: int | re.RegexFlag = 0,
         max_buffer_size: int | None = None,
         read_timeout: float | None = None,
         read_interval: float = 0.1,
         lookback: int = 0,
-        text: bool = False,
-        encoding: str | None = None,
-        errors: str | None = None,
         **kwargs,
     ) -> tuple[bool, bytes | str]:
-        del text, encoding, errors
-
-        pattern: bytes
-
         logger.info("Searching for pattern: %s", pattern)
 
         buffer: bytearray = bytearray()
@@ -187,30 +130,8 @@ class Client:
     # Channel Writing                                                          #
     ############################################################################
 
-    @overload
-    def write(self, content: str, **kwargs) -> None: ...
-
-    @overload
-    def write(
-        self,
-        content: bytes,
-        encoding: str | None = None,
-        errors: str | None = None,
-        **kwargs,
-    ) -> None: ...
-
-    # noinspection PyUnusedLocal
-    @normalize("content")
-    def write(
-        self,
-        content: str | bytes,
-        encoding: str | None = None,
-        errors: str | None = None,
-        **kwargs,
-    ) -> None:
-        del encoding, errors
-
-        content: bytes
+    @normalize.params.encode
+    def write(self, content: bytes, **kwargs) -> None:
         # noinspection PyArgumentList
         return self.channel.write(content, **kwargs)
 
@@ -228,8 +149,8 @@ class Client:
 
     # noinspection PyUnusedLocal
     # pylint: disable=too-many-locals,too-many-arguments
-    @normalize(
-        1,
+    @normalize.response.decode
+    @normalize.params.default(
         return_sequence="return_sequence",
         response_return_sequence="response_return_sequence",
         prompt_pattern="prompt_pattern",
@@ -238,19 +159,13 @@ class Client:
         self,
         *args,
         read_delay: float = 1,
-        text: bool = False,
-        prompt_pattern: str | bytes | None = None,
+        prompt_pattern: bytes | DEFAULT_TYPE = DEFAULT,
         re_flags: int | re.RegexFlag | None = None,
-        encoding: str | None = None,
-        errors: str | None = None,
-        return_sequence: str | bytes | None = None,
-        response_return_sequence: str | bytes | None = None,
+        return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
+        response_return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
         write_kwargs: dict[str, Any] | None = None,
         **kwargs,
     ):
-        del text, encoding, errors
-        prompt_pattern: bytes | None
-
         re_flags = self.prompt_re_flags if re_flags is None else re_flags
 
         # Send a newline to force our terminal into sending a prompt
@@ -296,16 +211,13 @@ class Client:
 
         return False, None
 
-    # noinspection PyUnusedLocal
-    @normalize("command", return_sequence="return_sequence")
+    @normalize.params.encode
+    @normalize.params.default(return_sequence="return_sequence")
     def _normalize_command(
         self,
-        command: str | bytes,
-        return_sequence: str | bytes | None = None,
-        encoding: str | None = None,
-        errors: str | None = None,
+        command: bytes,
+        return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
     ) -> bytes:
-        del encoding, errors
         command: bytes
 
         if not command.endswith(return_sequence):
@@ -314,17 +226,23 @@ class Client:
         return command
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
-    @normalize(0, prompt="prompt", normalize_command="normalize_commands")
+    @normalize.response.decode
+    @normalize.params.encode
+    @normalize.params.default(
+        prompt="prompt",
+        normalize_command="normalize_commands",
+        return_sequence="return_sequence",
+    )
     def run_command(
         self,
-        command: str | bytes,
-        prompt: str | bytes | None = None,
-        return_sequence: str | bytes | None = None,
-        normalize_command: bool | None = None,
+        command: bytes,
+        prompt: bytes | DEFAULT_TYPE = DEFAULT,
+        return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
+        normalize_command: bool | DEFAULT_TYPE = DEFAULT,
         find_prompt_kwargs: dict[str, Any] | None = None,
         write_kwargs: dict[str, Any] | None = None,
         **kwargs,
-    ) -> tuple[bool, str | bytes]:
+    ) -> tuple[bool, bytes]:
         if not prompt:
             prompt_found, prompt = self.find_prompt(**(find_prompt_kwargs or {}))
             if not prompt_found:
@@ -333,15 +251,13 @@ class Client:
                 )
 
         if normalize_command:
-            command: bytes = self._normalize_command(
-                command,
-                return_sequence,
-                encoding=kwargs.get("encoding"),
-                errors=kwargs.get("errors"),
-            )
+            command: bytes = self._normalize_command(command, return_sequence)
 
         self.write(command, **(write_kwargs or {}))
-        return self.read_until_pattern(re.escape(prompt), **kwargs)
+
+        # noinspection PyTypeChecker
+        normalized_prompt: bytes = re.escape(prompt)
+        return self.read_until_pattern(normalized_prompt, **kwargs)
 
     ############################################################################
     # Terminal State Management                                                #

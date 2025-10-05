@@ -38,57 +38,6 @@ def apply_normalization(
     bound.arguments[keyword] = proposed
 
 
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def normalize(*normalization_args: str | int, **normalization_kwargs):
-    def decorator(func: F):
-        def wrapper(self: "netapult.client.Client", *args, **kwargs):
-            sig = inspect.signature(func)
-            bound = sig.bind(self, *args, **kwargs)
-            bound.apply_defaults()
-
-            # Determine the encoding to use
-            encoding: str = bound.arguments.get("encoding") or self.encoding
-            errors: str = bound.arguments.get("errors") or self.errors
-
-            normalize_index: int | None = None
-            for keyword in normalization_args:
-                if isinstance(keyword, int):
-                    normalize_index = keyword
-                    continue
-
-                apply_normalization(bound, keyword, self, None, encoding, errors)
-
-            for keyword, fallback_variable in normalization_kwargs.items():
-                apply_normalization(
-                    bound, keyword, self, fallback_variable, encoding, errors
-                )
-
-            result = func(*bound.args, **bound.kwargs)
-            if normalize_index is None or not bound.arguments.get("text"):
-                return result
-
-            if isinstance(result, tuple):
-                if not isinstance(result[normalize_index], bytes):
-                    return result
-
-                result = list(result)
-                result[normalize_index] = result[normalize_index].decode(
-                    encoding, errors
-                )
-                return tuple(result)
-
-            if isinstance(result, bytes):
-                return result.decode(encoding, errors)
-
-            return result
-
-        return wrapper
-
-    return decorator
-
-
 STRIP_ANSI_PATTERN: re.Pattern[bytes] = re.compile(rb"\x1B\[[0-?]*[ -/]*[@-~]")
 
 
@@ -98,7 +47,7 @@ def strip_ansi(data: bytes) -> bytes:
 
 def rfind_multi_char(
     content: str | bytes,
-    target: tuple[str | bytes, ...],
+    target: tuple[str | int, ...],
     start: int = 0,
     end: int | None = None,
 ) -> int:
@@ -112,4 +61,4 @@ def rfind_multi_char(
     return -1
 
 
-__all__: tuple[str, ...] = ("load_named_object", "normalize", "strip_ansi")
+__all__: tuple[str, ...] = ("load_named_object", "strip_ansi")
