@@ -15,9 +15,14 @@
 
 # Purpose
 
-Netapult is a framework for querying and managing terminal-based devices, designed for developers requiring maximum 
-control over workflows without abstracting away fine-grained control. Netapult enables the execution of commands against 
-these terminal-based devices and the collection of resulting data.
+Netapult is a framework for querying and managing terminal-based devices without requiring software installation on 
+targets, designed for network and security engineers to automate workflows involving the configuration or auditing of 
+devices.
+
+The framework is designed to execute human-readable commands for deployments where commands may rapidly change or where
+a machine-to-machine protocol is not available. Through offering a plugin approach to protocols and device-specific
+implementations, Netapult offers the ability for developers to easily integrate their own features without waiting for
+a vendor.
 
 ### Use Cases
 
@@ -42,8 +47,53 @@ Rapidly configure a lab environment for trainees or validate their configuration
 
 </details>
 
+Netapult is ideal for situations where a dedicated machine-to-machine protocol is not available as it provides an 
+interface to execute raw commands, automating the workflow a human would undergo.
+
+For systems where a machine-to-machine protocol is available (such as NETCONF or the Simple Network Management Protocol) 
+combined with a use case that does not require quick command modification, you may find the following alternatives
+more suitable:
+
+- [ncclient](https://pypi.org/project/ncclient/): NETCONF client
+  - [JunOS PyEZ](https://pypi.org/project/junos-eznc/): JunOS-specific wrapper
+- [pyGNMI](https://pypi.org/project/pygnmi/): gRPC Network Management Interface client
+- [requests](https://pypi.org/project/requests/): HTTP client for RESTCONF
+
+Vendors may also offer products specific to their product suite.
+
 # Usage
 
-The framework does **not** ship with a protocol or device-specific implementations in an effort to provide a 
-maintainable, plugin-like structure such that framework's package does not require updating to alter a protocol or 
-device implementation.
+As the framework does not provide any protocol or device-specific implementation, additional packages are required to 
+efficiently use netapult. For example, to integrate an SSH capabilities, 
+[netapult-ssh](https://pypi.org/project/netapult-ssh/) is available and offered as an extra dependency.
+
+The following example leverages netapult-ssh to execute a command and retrieve its response:
+```python
+import time
+
+import netapult.dispatch
+
+with netapult.dispatch(
+    "generic", # Use the generic client
+    "ssh", # Use our SSH protocol
+    protocol_options={
+        "host": "your-host-here",
+        "username": "your-username-here",
+        "password": "your-password-here",
+    },
+) as client:
+    # Allow time for the terminal to initialize
+    time.sleep(3)
+
+    # Acquire the banner
+    banner: str = client.read(text=True)
+    prompt_found, result = client.run_command("echo Hello World\n", text=True)
+
+    print("Banner:", banner)
+    print("Result:", result)
+```
+
+Across protocols, command execution generally remains in a consistent format. However, protocols may require different
+options to establish a connection such as when authentication or a remote connection is required. Additionally,
+device-specific implementations may offer an enhanced API, such as for switching in and out of modes 
+(ex. privileged and configuration mode).

@@ -20,12 +20,12 @@ def load_named_object(name: str) -> Any:
 
 
 def apply_normalization(
-        bound: inspect.BoundArguments,
-        keyword: str,
-        obj: Any,
-        fallback_variable: str | None = None,
-        encoding: str = "utf-8",
-        errors: str = "backslashreplace",
+    bound: inspect.BoundArguments,
+    keyword: str,
+    obj: Any,
+    fallback_variable: str | None = None,
+    encoding: str = "utf-8",
+    errors: str = "backslashreplace",
 ):
     proposed = bound.arguments.get(keyword)
     if isinstance(proposed, str):
@@ -60,7 +60,9 @@ def normalize(*normalization_args: str | int, **normalization_kwargs):
                 apply_normalization(bound, keyword, self, None, encoding, errors)
 
             for keyword, fallback_variable in normalization_kwargs.items():
-                apply_normalization(bound, keyword, self, fallback_variable, encoding, errors)
+                apply_normalization(
+                    bound, keyword, self, fallback_variable, encoding, errors
+                )
 
             result = func(*bound.args, **bound.kwargs)
             if normalize_index is None or not bound.arguments.get("text"):
@@ -71,7 +73,9 @@ def normalize(*normalization_args: str | int, **normalization_kwargs):
                     return result
 
                 result = list(result)
-                result[normalize_index] = result[normalize_index].decode(encoding, errors)
+                result[normalize_index] = result[normalize_index].decode(
+                    encoding, errors
+                )
                 return tuple(result)
 
             if isinstance(result, bytes):
@@ -89,6 +93,22 @@ STRIP_ANSI_PATTERN: re.Pattern[bytes] = re.compile(rb"\x1B\[[0-?]*[ -/]*[@-~]")
 
 def strip_ansi(data: bytes) -> bytes:
     return STRIP_ANSI_PATTERN.sub(b"", data)
+
+
+def rfind_multi_char(
+    content: str | bytes,
+    target: tuple[str | bytes, ...],
+    start: int = 0,
+    end: int | None = None,
+) -> int:
+    if end is None:
+        end: int = len(content)
+
+    for i in range(end - 1, start - 1, -1):
+        if content[i] in target:
+            return i
+
+    return -1
 
 
 __all__: tuple[str, ...] = ("load_named_object", "normalize", "strip_ansi")

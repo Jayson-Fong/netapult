@@ -12,3 +12,7 @@ class UnknownModeException(NetapultBaseException):
 
 class PromptNotFoundException(NetapultBaseException):
     pass
+
+
+class UnexpectedValueError(NetapultBaseException):
+    pass

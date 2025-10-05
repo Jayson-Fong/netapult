@@ -1,6 +1,7 @@
 """
 Abstract channel
 """
+
 from abc import abstractmethod
 from types import TracebackType
 
