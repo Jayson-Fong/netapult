@@ -73,7 +73,7 @@ its response:
 ```python
 import time
 
-import netapult.dispatch
+import netapult
 
 with netapult.dispatch(
     "generic", # Use the generic client
