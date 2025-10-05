@@ -59,7 +59,10 @@ more suitable:
 - [pyGNMI](https://pypi.org/project/pygnmi/): gRPC Network Management Interface client
 - [requests](https://pypi.org/project/requests/): HTTP client for RESTCONF
 
-Vendors may also offer products specific to their product suite.
+Vendors may also offer products specific to their product suite. 
+
+When these protocols or services are not available, such as during initial configuration, Netapult may aid setup and 
+automate tasks that would otherwise mandate human intervention.
 
 # Usage
 
