@@ -1,10 +1,10 @@
 from importlib.metadata import entry_points
 from typing import TYPE_CHECKING, Any
 
-import netapult.client
 import netapult.channel
-import netapult.util
+import netapult.client
 import netapult.exceptions
+import netapult.util
 
 if TYPE_CHECKING:
     # noinspection PyProtectedMember

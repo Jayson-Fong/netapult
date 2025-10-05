@@ -1,11 +1,14 @@
+"""
+General utilities
+"""
+
 import functools
 import importlib
-import inspect
 import re
-from typing import Any, TypeVar, Callable, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import netapult.client
+    pass
 
 NAME_PATTERN: re.Pattern[str] = re.compile(
     r"(?P<module>[\w.]+)\s*(:\s*(?P<attr>[\w.]+)\s*)?((?P<extras>\[.*])\s*)?$"
@@ -13,35 +16,33 @@ NAME_PATTERN: re.Pattern[str] = re.compile(
 
 
 def load_named_object(name: str) -> Any:
+    """
+    Loads an object given an entry point specification.
+
+    Entry point specifications consist of a module path,
+    attribute, and an optional extra. For example:
+    package.module:ClassName.
+
+    :param name: Entry point specification.
+    :return: Requested object.
+    """
+
     match = NAME_PATTERN.match(name)
     module = importlib.import_module(match.group("module"))
     attrs = filter(None, (match.group("attr") or "").split("."))
     return functools.reduce(getattr, attrs, module)
 
 
-# pylint: disable=too-many-arguments,too-many-positional-arguments
-def apply_normalization(
-    bound: inspect.BoundArguments,
-    keyword: str,
-    obj: Any,
-    fallback_variable: str | None = None,
-    encoding: str = "utf-8",
-    errors: str = "backslashreplace",
-):
-    proposed = bound.arguments.get(keyword)
-    if isinstance(proposed, str):
-        proposed = proposed.encode(encoding, errors)
-
-    if proposed is None and fallback_variable is not None:
-        proposed = getattr(obj, fallback_variable)
-
-    bound.arguments[keyword] = proposed
-
-
 STRIP_ANSI_PATTERN: re.Pattern[bytes] = re.compile(rb"\x1B\[[0-?]*[ -/]*[@-~]")
 
 
 def strip_ansi(data: bytes) -> bytes:
+    """
+    Strips ANSI escape codes from the input.
+
+    :param data: Data to sanitize.
+    :return: Sanitized data.
+    """
     return STRIP_ANSI_PATTERN.sub(b"", data)
 
 
@@ -51,6 +52,16 @@ def rfind_multi_char(
     start: int = 0,
     end: int | None = None,
 ) -> int:
+    """
+    Starting from the end, looks for the first instance of a targeted character.
+
+    :param content: The content to search through.
+    :param target: A tuple of either targeted strings or integers (used for searching bytes).
+    :param start: Minimum index to search.
+    :param end: Maximum index to search.
+    :return: Last occurrence index of targets in the specified range, or -1 if not found.
+    """
+
     if end is None:
         end: int = len(content)
 
@@ -61,4 +72,4 @@ def rfind_multi_char(
     return -1
 
 
-__all__: tuple[str, ...] = ("load_named_object", "strip_ansi")
+__all__: tuple[str, ...] = ("load_named_object", "strip_ansi", "rfind_multi_char")

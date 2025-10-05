@@ -21,6 +21,7 @@ class Client:
     @normalize.params.encode_argument(
         "prompt_pattern", "prompt", "return_sequence", "response_return_sequence"
     )
+    @overload
     def __init__(
         self,
         channel: netapult.channel.Channel,
@@ -34,7 +35,42 @@ class Client:
         prompt_re_flags: int | re.RegexFlag = 0,
         normalize_commands: bool = True,
         **kwargs,
+    ): ...
+
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+    @normalize.params.encode_argument(
+        "prompt_pattern", "prompt", "return_sequence", "response_return_sequence"
+    )
+    def __init__(
+        self,
+        channel: netapult.channel.Channel,
+        delay_factor: float = 1.0,
+        encoding: str = "utf-8",
+        errors: str = "backslashreplace",
+        return_sequence: bytes = b"\n",
+        prompt: bytes | None = None,
+        prompt_pattern: bytes = rb"(?:\$|#|%|>) ",
+        response_return_sequence: bytes = b"\n\r",
+        prompt_re_flags: int | re.RegexFlag = 0,
+        normalize_commands: bool = True,
+        **kwargs,
     ):
+        """
+        Initializes the client.
+
+        :param channel: Channel to read and write data to/from.
+        :param delay_factor: Factor to multiply delay times by.
+        :param encoding: Encoding to use.
+        :param errors: Encoding error resolution strategy.
+        :param return_sequence: Sequence of characters to use as return.
+        :param prompt: System prompt.
+        :param prompt_pattern: Regular expression to match the prompt.
+        :param response_return_sequence: Sequence of characters to identify line breaks.
+        :param prompt_re_flags: Regular expression flags to match the prompt.
+        :param normalize_commands: Whether to normalize commands before executing.
+        :param kwargs: Unused - provided to prevent errors.
+        """
+
         # kwargs is accepted here to generically accept certain keyword
         # arguments such as privilege passwords, which may not be
         # available universally, but our user may want to assume it is.
@@ -207,7 +243,7 @@ class Client:
         response_return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
         write_kwargs: dict[str, Any] | None = None,
         **kwargs,
-    ) -> tuple[bool, str | None]: ...
+    ) -> str | None: ...
 
     # noinspection PyUnusedLocal
     # pylint: disable=too-many-locals,too-many-arguments
@@ -227,8 +263,7 @@ class Client:
         response_return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
         write_kwargs: dict[str, Any] | None = None,
         **kwargs,
-    ) -> tuple[bool, bytes | None]:
-        # TODO: Remove the bool? It seems unnecessary.
+    ) -> bytes | None:
         re_flags = self.prompt_re_flags if re_flags is None else re_flags
 
         # Send a newline to force our terminal into sending a prompt
@@ -241,7 +276,7 @@ class Client:
         )
 
         if not pattern_found:
-            return False, None
+            return None
 
         content: bytes
         end_index: int = len(content)
@@ -256,7 +291,7 @@ class Client:
                 content, tuple(response_return_sequence), 0, end_index
             )
             if newline_index == -1:
-                return False, None
+                return None
 
             match: re.Match[bytes] | None = prompt_search_pattern.search(
                 content[newline_index:]
@@ -268,11 +303,11 @@ class Client:
                     re_flags=re_flags,
                 )
 
-                return True, prompt
+                return prompt
 
             end_index = newline_index
 
-        return False, None
+        return None
 
     @normalize.params.encode
     @normalize.params.default(return_sequence="return_sequence")
@@ -347,8 +382,8 @@ class Client:
         **kwargs,
     ) -> tuple[bool, bytes]:
         if not prompt:
-            prompt_found, prompt = self.find_prompt(**(find_prompt_kwargs or {}))
-            if not prompt_found:
+            prompt = self.find_prompt(**(find_prompt_kwargs or {}))
+            if prompt is None:
                 raise netapult.exceptions.PromptNotFoundException(
                     "Failed to find prompt"
                 )
