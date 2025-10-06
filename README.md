@@ -57,7 +57,7 @@ more suitable:
 - [ncclient](https://pypi.org/project/ncclient/): NETCONF client
   - [JunOS PyEZ](https://pypi.org/project/junos-eznc/): JunOS-specific wrapper
 - [pyGNMI](https://pypi.org/project/pygnmi/): gRPC Network Management Interface client
-- [requests](https://pypi.org/project/requests/): HTTP client for RESTCONF
+- [requests](https://pypi.org/project/requests/): HTTP client (use for RESTCONF)
 
 Vendors may also offer products specific to their product suite. 
 
