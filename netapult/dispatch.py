@@ -1,3 +1,11 @@
+"""
+Centralized client and channel construction
+
+Provides a means to create a client and channel based
+on string inputs to reduce the overhead associated with
+creating a connection.
+"""
+
 from importlib.metadata import entry_points
 from typing import TYPE_CHECKING, Any
 
@@ -19,6 +27,18 @@ PROTOCOLS: "EntryPoints" = entry_points(group="netapult.protocol")
 def _extract_requested_class(
     name: str, builtins: "EntryPoints", overrides: dict[str, str | type] | None
 ) -> type | None:
+    """
+    Converts a named object into its loaded form.
+
+    The name is expected to map to either an entry point, specified
+    in `builtins`, or as a reference to an override option.
+
+    :param name: Name of the object to lookup.
+    :param builtins: Entry point specifications to match against.
+    :param overrides: Dictionary to override builtins.
+    :return: Resolved object.
+    """
+
     if overrides is not None and name in overrides:
         requested_class: str | type["_client.Client"] = overrides[name]
         if isinstance(requested_class, str):
@@ -40,6 +60,18 @@ def dispatch(
     protocol_options: dict[str, Any] | None = None,
     **kwargs,
 ) -> "_client.Client":
+    """
+    Given a device type and protocol, instantiates a client.
+
+    :param device_type: Device type identifier.
+    :param protocol: Protocol name.
+    :param device_overrides: Device type to client lookup overrides.
+    :param protocol_overrides: Protocol name to channel lookup overrides.
+    :param protocol_options: Keyword arguments for channel instantiation.
+    :param kwargs: Keyword arguments for the client.
+    :return: Instantiated client.
+    """
+
     client_class: type["_client.Client"] | None = _extract_requested_class(
         device_type, DEVICE_TYPES, device_overrides
     )

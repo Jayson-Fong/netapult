@@ -70,21 +70,29 @@ As the framework does not provide any protocol or device-specific implementation
 efficiently use netapult. For example, to integrate an SSH capabilities, 
 [netapult-ssh](https://pypi.org/project/netapult-ssh/) is available and offered as an extra dependency.
 
+Some protocol and client implementations are available as extras to this package, such as `ssh`, which provides 
+`netapult-ssh`:
+
+```shell
+python3 -m pip install 'netapult[ssh]'
+```
+
 The following example leverages [netapult-ssh](https://pypi.org/project/netapult-ssh/) to execute a command and retrieve 
 its response:
 
 ```python
 import time
+import getpass
 
 import netapult
 
 with netapult.dispatch(
-    "generic", # Use the generic client
-    "ssh", # Use our SSH protocol
+    "generic",  # Use the generic client
+    "ssh",  # Use the SSH protocol provided by netapult-ssh
     protocol_options={
-        "host": "your-host-here",
-        "username": "your-username-here",
-        "password": "your-password-here",
+        "host": input("Host: "),
+        "username": input("Username: "),
+        "password": getpass.getpass("Password: "),
     },
 ) as client:
     # Allow time for the terminal to initialize
@@ -92,7 +100,7 @@ with netapult.dispatch(
 
     # Acquire the banner
     banner: str = client.read(text=True)
-    prompt_found, result = client.run_command("echo Hello World\n", text=True)
+    prompt_found, result = client.run_command("echo Hello World", text=True)
 
     print("Banner:", banner)
     print("Result:", result)
@@ -102,3 +110,12 @@ Across protocols, command execution generally remains in a consistent format. Ho
 options to establish a connection such as when authentication or a remote connection is required. Additionally,
 device-specific implementations may offer an enhanced API, such as for switching in and out of modes 
 (ex. privileged and configuration mode).
+
+You can find additional examples in [examples](examples).
+
+# Backlog
+
+While not yet implemented, these are some expected features in the future:
+- Prompt stripping: Strip the prompt from command output
+- Echo verification: Verify that a command was sent successfully
+- Echo stripping: Strip echoed commands from the output.

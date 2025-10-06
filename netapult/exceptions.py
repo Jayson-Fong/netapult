@@ -1,3 +1,7 @@
+"""
+Exceptions raised within the package
+"""
+
 import abc
 
 
@@ -6,19 +10,15 @@ class NetapultBaseException(Exception, abc.ABC):
 
 
 class DispatchException(NetapultBaseException):
-    pass
+    """Error while dispatching"""
 
 
 class UnknownModeException(NetapultBaseException):
-    pass
+    """Requested mode is unknown"""
 
 
 class PromptNotFoundException(NetapultBaseException):
-    pass
-
-
-class UnexpectedValueError(NetapultBaseException):
-    pass
+    """Failed to find prompt"""
 
 
 __all__: tuple[str, ...] = (
@@ -26,5 +26,4 @@ __all__: tuple[str, ...] = (
     "DispatchException",
     "UnknownModeException",
     "PromptNotFoundException",
-    "UnexpectedValueError",
 )
