@@ -11,3 +11,6 @@ class SupportsPrivilege(Protocol):
 
     @contextmanager
     def privilege(self): ...
+
+
+__all__: tuple[str, ...] = ("SupportsPrivilege",)

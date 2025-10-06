@@ -1,17 +1,56 @@
 import inspect
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, TypeVar, ParamSpec, Any
+from typing import Protocol, TYPE_CHECKING, Callable, TypeVar, ParamSpec, Any
 
-import netapult.netapult_globals
-
-
-if TYPE_CHECKING:
-
-    from ._types import EncodingSpecified
-
+from .constants import DEFAULT
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+
+if TYPE_CHECKING:
+    # pylint: disable=too-few-public-methods
+    class EncodingSpecified(Protocol):
+        encoding: str
+        errors: str
+
+    # pylint: disable=too-few-public-methods
+    class DecodeNormalizer(Protocol[P, R]):
+
+        def __call__(
+            self: "EncodingSpecified",
+            *args: P.args,
+            text: bool = False,
+            **kwargs: P.kwargs,
+        ) -> R: ...
+
+
+def decode(func: Callable[P, R]) -> Callable[P, R] | "DecodeNormalizer[P, R]":
+    @wraps(func)
+    def wrapper(
+        self: "EncodingSpecified", *args: P.args, text: bool = False, **kwargs: P.kwargs
+    ) -> R:
+        result = func(self, *args, **kwargs)
+
+        if not text:
+            return result
+
+        if isinstance(result, (bytes, bytearray)):
+            return result.decode(self.encoding, self.errors)
+
+        if isinstance(result, tuple):
+
+            def _decode(value):
+                if isinstance(value, (bytes, bytearray)):
+                    return value.decode(self.encoding, self.errors)
+
+                return value
+
+            return tuple(_decode(entry) for entry in result)
+
+        return result
+
+    return wrapper
 
 
 def encode(func: Callable[P, R]) -> Callable[P, R]:
@@ -66,7 +105,7 @@ def default(**normalization_kwargs: str) -> Callable[[Callable[P, R]], Callable[
             bound.apply_defaults()
 
             for argument_name, default_name in normalization_kwargs.items():
-                if bound.arguments[argument_name] is netapult.netapult_globals.DEFAULT:
+                if bound.arguments[argument_name] is DEFAULT:
                     bound.arguments[argument_name] = getattr(self, default_name)
 
             return func(*bound.args, **bound.kwargs)
@@ -76,4 +115,4 @@ def default(**normalization_kwargs: str) -> Callable[[Callable[P, R]], Callable[
     return decorator
 
 
-__all__: tuple[str, ...] = ("encode", "default")
+__all__: tuple[str, ...] = ("decode", "encode", "encode_argument", "default")

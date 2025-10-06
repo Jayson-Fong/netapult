@@ -5,17 +5,14 @@ General utilities
 import functools
 import importlib
 import re
-from typing import Any, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
+from typing import Any
 
 NAME_PATTERN: re.Pattern[str] = re.compile(
     r"(?P<module>[\w.]+)\s*(:\s*(?P<attr>[\w.]+)\s*)?((?P<extras>\[.*])\s*)?$"
 )
 
 
-def load_named_object(name: str) -> Any:
+def load_object(name: str) -> Any:
     """
     Loads an object given an entry point specification.
 
@@ -46,7 +43,7 @@ def strip_ansi(data: bytes) -> bytes:
     return STRIP_ANSI_PATTERN.sub(b"", data)
 
 
-def rfind_multi_char(
+def rfind_any(
     content: str | bytes,
     target: tuple[str | int, ...],
     start: int = 0,
@@ -72,4 +69,4 @@ def rfind_multi_char(
     return -1
 
 
-__all__: tuple[str, ...] = ("load_named_object", "strip_ansi", "rfind_multi_char")
+__all__: tuple[str, ...] = ("load_object", "strip_ansi", "rfind_any")

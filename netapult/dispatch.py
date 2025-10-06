@@ -1,14 +1,16 @@
 from importlib.metadata import entry_points
 from typing import TYPE_CHECKING, Any
 
-import netapult.channel
-import netapult.client
-import netapult.exceptions
-import netapult.util
+
+from . import exceptions as _exceptions
 
 if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from importlib.metadata import EntryPoints
+
+    from . import channel as _channel
+    from . import client as _client
+    from . import util as _util
 
 DEVICE_TYPES: "EntryPoints" = entry_points(group="netapult.device")
 PROTOCOLS: "EntryPoints" = entry_points(group="netapult.protocol")
@@ -18,11 +20,9 @@ def _extract_requested_class(
     name: str, builtins: "EntryPoints", overrides: dict[str, str | type] | None
 ) -> type | None:
     if overrides is not None and name in overrides:
-        requested_class: str | type[netapult.client.Client] = overrides[name]
+        requested_class: str | type["_client.Client"] = overrides[name]
         if isinstance(requested_class, str):
-            requested_class: type[netapult.client.Client] = (
-                netapult.util.load_named_object(requested_class)
-            )
+            requested_class: type["_client.Client"] = _util.load_object(requested_class)
 
         return requested_class
 
@@ -35,28 +35,29 @@ def _extract_requested_class(
 def dispatch(
     device_type: str,
     protocol: str,
-    device_overrides: dict[str, str | type[netapult.client.Client]] | None = None,
+    device_overrides: dict[str, str | type["_client.Client"]] | None = None,
     protocol_overrides: dict[str, str | type] | None = None,
     protocol_options: dict[str, Any] | None = None,
     **kwargs,
-) -> netapult.client.Client:
-    client_class: type[netapult.client.Client] | None = _extract_requested_class(
+) -> "_client.Client":
+    client_class: type["_client.Client"] | None = _extract_requested_class(
         device_type, DEVICE_TYPES, device_overrides
     )
 
     if client_class is None:
-        raise netapult.exceptions.DispatchException(
-            f"Unknown device type: {device_type}"
-        )
+        raise _exceptions.DispatchException(f"Unknown device type: {device_type}")
 
-    protocol_class: type[netapult.channel.Channel] | None = _extract_requested_class(
+    protocol_class: type["_channel.Channel"] | None = _extract_requested_class(
         protocol, PROTOCOLS, protocol_overrides
     )
 
     if protocol_class is None:
-        raise netapult.exceptions.DispatchException(f"Unknown protocol: {protocol}")
+        raise _exceptions.DispatchException(f"Unknown protocol: {protocol}")
 
     # noinspection PyArgumentList
     return client_class(
         channel=protocol_class(protocol, **(protocol_options or {})), **kwargs
     )
+
+
+__all__: tuple[str, ...] = ("dispatch", "DEVICE_TYPES", "PROTOCOLS")

@@ -5,11 +5,11 @@ from contextlib import contextmanager
 from types import TracebackType
 from typing import Self, Any, overload
 
-import netapult.channel
-import netapult.exceptions
-import netapult.util
-from netapult import normalize
-from netapult.netapult_globals import DEFAULT, DEFAULT_TYPE
+from . import channel as _channel
+from . import exceptions as _exceptions
+from . import util as _util
+from .constants import DEFAULT, DEFAULT_TYPE
+from . import _decorators as decorators
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -18,13 +18,13 @@ logger: logging.Logger = logging.getLogger(__name__)
 class Client:
 
     # pylint: disable=too-many-positional-arguments,too-many-arguments
-    @normalize.params.encode_argument(
+    @decorators.encode_argument(
         "prompt_pattern", "prompt", "return_sequence", "response_return_sequence"
     )
     @overload
     def __init__(
         self,
-        channel: netapult.channel.Channel,
+        channel: _channel.Channel,
         delay_factor: float = 1.0,
         encoding: str = "utf-8",
         errors: str = "backslashreplace",
@@ -38,12 +38,12 @@ class Client:
     ): ...
 
     # pylint: disable=too-many-positional-arguments,too-many-arguments
-    @normalize.params.encode_argument(
+    @decorators.encode_argument(
         "prompt_pattern", "prompt", "return_sequence", "response_return_sequence"
     )
     def __init__(
         self,
-        channel: netapult.channel.Channel,
+        channel: _channel.Channel,
         delay_factor: float = 1.0,
         encoding: str = "utf-8",
         errors: str = "backslashreplace",
@@ -79,7 +79,7 @@ class Client:
                 "Received unexpected keyword initialization argument: %s", kwarg_key
             )
 
-        self.channel: netapult.channel.Channel = channel
+        self.channel: _channel.Channel = channel
         self.protocol: str = channel.protocol_name
         self.delay_factor: float = delay_factor
         self.encoding: str = encoding
@@ -122,19 +122,19 @@ class Client:
     ############################################################################
 
     @overload
-    @normalize.response.decode
+    @decorators.decode
     def read(self, *args, text: True, **kwargs) -> str:
         # noinspection PyArgumentList
         return self.channel.read(*args, **kwargs)
 
     # noinspection PyUnusedLocal
-    @normalize.response.decode
+    @decorators.decode
     def read(self, *args, **kwargs) -> bytes:
         # noinspection PyArgumentList
         return self.channel.read(*args, **kwargs)
 
-    @normalize.response.decode
-    @normalize.params.encode
+    @decorators.decode
+    @decorators.encode
     @overload
     def read_until_pattern(
         self,
@@ -149,8 +149,8 @@ class Client:
         **kwargs,
     ) -> tuple[bool, str]: ...
 
-    @normalize.response.decode
-    @normalize.params.encode
+    @decorators.decode
+    @decorators.encode
     @overload
     def read_until_pattern(
         self,
@@ -166,8 +166,8 @@ class Client:
     ) -> tuple[bool, bytes]: ...
 
     # noinspection PyUnusedLocal
-    @normalize.response.decode
-    @normalize.params.encode
+    @decorators.decode
+    @decorators.encode
     def read_until_pattern(
         self,
         pattern: bytes,
@@ -204,11 +204,11 @@ class Client:
     # Channel Writing                                                          #
     ############################################################################
 
-    @normalize.params.encode
+    @decorators.encode
     @overload
     def write(self, content: str, **kwargs) -> None: ...
 
-    @normalize.params.encode
+    @decorators.encode
     def write(self, content: bytes, **kwargs) -> None:
         # noinspection PyArgumentList
         return self.channel.write(content, **kwargs)
@@ -223,10 +223,10 @@ class Client:
     ) -> bytes:
         del pattern, re_flags
 
-        return netapult.util.strip_ansi(content).strip()
+        return _util.strip_ansi(content).strip()
 
-    @normalize.response.decode
-    @normalize.params.default(
+    @decorators.decode
+    @decorators.default(
         return_sequence="return_sequence",
         response_return_sequence="response_return_sequence",
         prompt_pattern="prompt_pattern",
@@ -247,8 +247,8 @@ class Client:
 
     # noinspection PyUnusedLocal
     # pylint: disable=too-many-locals,too-many-arguments
-    @normalize.response.decode
-    @normalize.params.default(
+    @decorators.decode
+    @decorators.default(
         return_sequence="return_sequence",
         response_return_sequence="response_return_sequence",
         prompt_pattern="prompt_pattern",
@@ -287,7 +287,7 @@ class Client:
 
         while end_index > 0:
             # Find our first line of usable content starting from the end
-            newline_index: int = netapult.util.rfind_multi_char(
+            newline_index: int = _util.rfind_any(
                 content, tuple(response_return_sequence), 0, end_index
             )
             if newline_index == -1:
@@ -309,8 +309,8 @@ class Client:
 
         return None
 
-    @normalize.params.encode
-    @normalize.params.default(return_sequence="return_sequence")
+    @decorators.encode
+    @decorators.default(return_sequence="return_sequence")
     def _normalize_command(
         self,
         command: bytes,
@@ -323,9 +323,9 @@ class Client:
 
         return command
 
-    @normalize.response.decode
-    @normalize.params.encode
-    @normalize.params.default(
+    @decorators.decode
+    @decorators.encode
+    @decorators.default(
         prompt="prompt",
         normalize_command="normalize_commands",
         return_sequence="return_sequence",
@@ -343,30 +343,29 @@ class Client:
         **kwargs,
     ) -> tuple[bool, str]: ...
 
-    @normalize.response.decode
-    @normalize.params.encode
-    @normalize.params.default(
+    @decorators.decode
+    @decorators.encode
+    @decorators.default(
         prompt="prompt",
         normalize_command="normalize_commands",
         return_sequence="return_sequence",
     )
     @overload
     def run_command(
-            self,
-            command: str,
-            prompt: bytes | DEFAULT_TYPE = DEFAULT,
-            return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
-            normalize_command: bool | DEFAULT_TYPE = DEFAULT,
-            find_prompt_kwargs: dict[str, Any] | None = None,
-            write_kwargs: dict[str, Any] | None = None,
-            **kwargs,
-    ) -> tuple[bool, bytes]:
-        ...
+        self,
+        command: str,
+        prompt: bytes | DEFAULT_TYPE = DEFAULT,
+        return_sequence: bytes | DEFAULT_TYPE = DEFAULT,
+        normalize_command: bool | DEFAULT_TYPE = DEFAULT,
+        find_prompt_kwargs: dict[str, Any] | None = None,
+        write_kwargs: dict[str, Any] | None = None,
+        **kwargs,
+    ) -> tuple[bool, bytes]: ...
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
-    @normalize.response.decode
-    @normalize.params.encode
-    @normalize.params.default(
+    @decorators.decode
+    @decorators.encode
+    @decorators.default(
         prompt="prompt",
         normalize_command="normalize_commands",
         return_sequence="return_sequence",
@@ -384,9 +383,7 @@ class Client:
         if not prompt:
             prompt = self.find_prompt(**(find_prompt_kwargs or {}))
             if prompt is None:
-                raise netapult.exceptions.PromptNotFoundException(
-                    "Failed to find prompt"
-                )
+                raise _exceptions.PromptNotFoundException("Failed to find prompt")
 
         if normalize_command:
             command: bytes = self._normalize_command(command, return_sequence)
@@ -404,12 +401,12 @@ class Client:
     # noinspection PyUnusedLocal
     def enter_mode(self, name: str, *args, **kwargs):
         del args, kwargs
-        raise netapult.exceptions.UnknownModeException(f"Unknown mode: {name}")
+        raise _exceptions.UnknownModeException(f"Unknown mode: {name}")
 
     # noinspection PyUnusedLocal
     def exit_mode(self, name: str, *args, **kwargs):
         del args, kwargs
-        raise netapult.exceptions.UnknownModeException(f"Unknown mode: {name}")
+        raise _exceptions.UnknownModeException(f"Unknown mode: {name}")
 
     @contextmanager
     def mode(self, name: str, *args, **kwargs):
@@ -432,3 +429,6 @@ class Client:
         exc_tb: TracebackType | None,
     ) -> None:
         self.disconnect()
+
+
+__all__: tuple[str, ...] = ("Client",)

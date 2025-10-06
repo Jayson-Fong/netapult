@@ -19,3 +19,12 @@ class PromptNotFoundException(NetapultBaseException):
 
 class UnexpectedValueError(NetapultBaseException):
     pass
+
+
+__all__: tuple[str, ...] = (
+    "NetapultBaseException",
+    "DispatchException",
+    "UnknownModeException",
+    "PromptNotFoundException",
+    "UnexpectedValueError",
+)

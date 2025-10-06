@@ -36,3 +36,6 @@ class Channel:
         exc_tb: TracebackType | None,
     ) -> None:
         self.disconnect()
+
+
+__all__: tuple[str, ...] = ("Channel",)
